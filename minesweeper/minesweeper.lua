@@ -228,7 +228,7 @@ chord = function(board, x, y, rows, cols)
     if cell.hid or
     cell.val == true or
     cell.val == 0 then
-        return
+        return true
     end
 
     local flagCount = 0
@@ -248,7 +248,7 @@ chord = function(board, x, y, rows, cols)
     end
 
     if flagCount ~= cell.val then
-        return
+        return true
     end
 
     for dy = -1, 1 do
