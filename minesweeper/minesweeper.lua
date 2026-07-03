@@ -261,19 +261,25 @@ chord = function(board, x, y, rows, cols)
                     ny >= 1 and ny <= rows then
                     local neighbor = board[ny][nx]
                     if neighbor.hid and not neighbor.flag then
-                        click(board, nx, ny, rows, cols)
+                        if not click(board, nx, ny, rows, cols) then
+                            return false
+                        end
                     end
                 end
             end
         end
     end
+    
+    return true
 end
 
 click = function(board, x, y, rows, cols)
     local cell = board[y][x]
 
     if cell.hid == false then
-        chord(board, x, y, rows, cols)
+        if not chord(board, x, y, rows, cols) then
+            return false
+        end
     end
 
     if cell.flag then
