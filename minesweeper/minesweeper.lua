@@ -371,7 +371,7 @@ local start = nil
 
 local function renderLoop()
     while true do
-        math.floor((os.epoch("utc") - start) / 1000)
+        timer = math.floor((os.epoch("utc") - start) / 1000)
     
         draw(board, mines, flags, timer, 
             rows, cols, ready)
