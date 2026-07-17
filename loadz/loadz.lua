@@ -19,4 +19,16 @@ function p.dofilez(path)
     return p.loadfilez(path, "bt", _ENV)()
 end
 
+function p.serializez(t)
+    return LibDeflate:CompressDeflate(textutils.serialize(t))
+end
+
+p.serialisez = p.serializez
+
+function p.unserializez(s)
+    return textutils.unserialize(LibDeflate:DecompressDeflate(s))
+end
+
+p.unserialisez = p.unserializez
+
 return p
