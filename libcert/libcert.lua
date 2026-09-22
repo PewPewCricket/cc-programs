@@ -26,34 +26,39 @@ local p = {}
 p._VERSION = 1
 
 -- Library functions
-p.createCert = function(issuer, subject, subjectKey, 
-    signKey, isSigner, from, to)
+p.create = function(issuer, subject, pubKey, 
+    isSigner, from, to)
     
     expect(1, issuer, "string")
     expect(2, subject, "string")
-    expect(3, subjectKey, "string")
-    expect(4, signKey, "string")
-    expect(5, isSigner, "boolean")
+    expect(3, pubKey, "string")
+    expect(4, isSigner, "boolean")
     
     local cert = {}
     local data = {
         version = p._VERSION, -- version number
         issuer = issuer,      -- issuer subj. id
         subject = subject,    -- subject
-        key = subjectKey,     -- pub. key of subj.
+        key = pubKey,         -- pub. key of subj.
         isSigner = isSigner,  -- can sign certs?
         from = from,          -- from date in utc
         to = to               -- to date in utc
     }
     
     cert.data = textutils.serialize(data)
-    cert.sig = crypto.sign(cert.data, signKey)
-    p.trustCert(cert, false)
-    
     return cert
 end
 
-p.verifyCertStructure = function(cert)
+p.sign = function(cert, key)
+    expect(1, cert, "table")
+    expect(2, key, "string")
+
+    cert.sig = crypto.sign(cert.data, key)
+end
+
+p.verifyStructure = function(cert)
+    expect(1, cert, "table")
+
     if cert.data == nil or cert.sig == nil then
         return false
     end
@@ -73,10 +78,10 @@ p.verifyCertStructure = function(cert)
     return true
 end
 
-p.saveCert = function(cert, overwrite)
+p.save = function(cert, overwrite)
     expect(1, cert, "table")
     
-    if not p.verifyCertStructure(cert) then
+    if not p.verifyStructure(cert) then
         error("malformed certificate.")
     end
     
@@ -96,7 +101,7 @@ p.saveCert = function(cert, overwrite)
     file:close()
 end
 
-p.loadCert = function(subject)
+p.load = function(subject)
     expect(1, subject, "string")
 
     local certpath = ("%s/%s.cert"):format(
@@ -109,18 +114,17 @@ p.loadCert = function(subject)
     local cert = textutils.unserialize(
         file:read("*a"))
     
-    if not p.verifyCertStructure(cert) then
+    if not p.verifyStructure(cert) then
         error("malformed certificate")
     end
     
     return cert
 end
 
-p.trustCert = function(cert, bool)
+p.setTrust = function(cert, bool)
     expect(1, cert, "table")
     expect(2, bool, "boolean")
     
-    local certData = textutils.unserialize(cert.data)
     local trustedFile = io.open(("%s/%s"):format(
         certdir, trustedFileName), "r")
     local trustedList = {}
@@ -129,7 +133,8 @@ p.trustCert = function(cert, bool)
             trustedFile:read("*a"))
         trustedFile:close()
     end
-    trustedList[certData.subject] = bool
+    
+    trustedList[crypto.sha256(cert.data)] = bool
     
     trustedFile = io.open(("%s/%s"):format(
         certdir, trustedFileName), "w")
@@ -137,22 +142,27 @@ p.trustCert = function(cert, bool)
     trustedFile:close()
 end
 
-p.verifyCert = function(cert, depth)
+p.verify = function(cert, depth)
     expect(1, cert, "table")
     depth = depth or 0
     if depth > 25 then
         error("certificate chains may not exceed 25 signers.")
     end
     
+    if not p.verifyStructure(cert) then
+        return false
+    end
+    
     local certData = textutils.unserialize(cert.data)
     local trustedFile = io.open(("%s/%s"):format(
         certdir, trustedFileName), "r")
+        
     if trustedFile then
         local trustedList = textutils.unserialize(
             trustedFile:read("*a"))
         trustedFile:close()
 
-        if trustedList[certData.subject] == true then
+        if trustedList[crypto.sha256(cert.data)] == true then
             dbg_log(certData.subject..": trusted")
             return true
         end
@@ -164,8 +174,8 @@ p.verifyCert = function(cert, depth)
         return false
     end
     
-    local issuerCert = p.loadCert(issuer)
-    if not p.verifyCert(issuerCert, depth) then
+    local issuerCert = p.load(issuer)
+    if not p.verify(issuerCert, depth) then
         dbg_log(certData.subject..": bad issuer")
         return false
     end
@@ -198,8 +208,8 @@ end
 
 p.hasIssuer = function(cert)
     local certData = textutils.unserialize(cert.data)
-    if not p.loadCert(certData.issuer) then
-        return certData.issuer
+    if not p.load(certData.issuer) then
+        return false, certData.issuer
     else
         return true
     end
