@@ -3,7 +3,7 @@ local base64 = require("cc.base64")
 local crypto = peripheral.find("cryptographic_accelerator")
 if not crypto then
     error("libcert requires a cyptographic accelerator to run.")
-    end
+end
 
 settings.define("libcert.certdir", {
     description = "Directory containing certificates.",
@@ -14,11 +14,11 @@ settings.define("libcert.certdir", {
 local certdir = settings.get("libcert.certdir")
 local trustedFileName = "trusted"
 --                   HDR VER ISR SUB KEY FRM TO  FLG
-local certPartFmt = "c7  H   s2  s2  s2  d   d   B   "
+local certPartFmt = "c6  H   s2  s2  s2  d   d   B   "
 --                   HDR VER ISR SUB KEY FRM TO  FLG SIG
-local certFullFmt = "c7  H   s2  s2  s2  d   d   B   c64"
+local certFullFmt = "c6  H   s2  s2  s2  d   d   B   c64"
 
-local certMagic = "cc-cert"
+local certMagic = "cc.504"
 local p = {}
 p._VERSION = 1
 
@@ -55,7 +55,7 @@ p.unpack = function(cert)
 
     -- Flag Byte: 0, 0, 0, 0, 0, 0, 0, isSigner
     local ok, magic, version, issuer, subject, key, from, to, flags, sig = pcall(string.unpack, certFullFmt, cert)
-    if not ok or magic ~= "cc-cert" or version ~= p._VERSION or to < from or from < 0 or to < 0 then
+    if not ok or magic ~= certMagic or version ~= p._VERSION or to < from or from < 0 or to < 0 then
         return nil
     end
 
